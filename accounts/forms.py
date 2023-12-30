@@ -8,10 +8,10 @@ from .models import UserBankAccount,UserAddress
 
 
 class UserForm(UserCreationForm):
-    account_type=forms.CharField(max_length=100,choices=ACCOUNT_TYPE)
-    account_no=forms.IntegerField(unique=True)
+    account_type=forms.ChoiceField(choices=ACCOUNT_TYPE)
+    account_no=forms.IntegerField()
     birth_date=forms.DateField(widget=forms.DateInput(attrs={'type':'date'}))
-    gender=forms.CharField(max_length=100,choices=GENDER)
+    gender=forms.ChoiceField(choices=GENDER)
     street_address=forms.CharField(max_length=100)
     city=forms.CharField(max_length=100)
     postal_code=forms.IntegerField()
@@ -42,14 +42,13 @@ class UserForm(UserCreationForm):
             )
 
             UserBankAccount.objects.create(
-                user=our_user
-                account_type=account_type
-                gender=gender
-                birth_date=birth_date
+                user=our_user,
+                account_type=account_type,
+                gender=gender,
+                birth_date=birth_date,
                 # ganared account no hendel
                 account_no=100000+our_user.id
             )
 
         return our_user
-    
     

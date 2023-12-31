@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="https://unpkg.com/tailwindcss@2.0.1/dist/tailwind.min.css">
 </head>
 <body>
-    
+    <p>{{request.user}}</p>
     {% if form.non_field_errors %} {% for error in form.non_field_errors %}
 <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mt-2" role="alert">
     <p class="font-bold">Error!</p>
@@ -27,7 +27,7 @@
             
             <div class="flex flex-wrap -mx-3 mb-6">
                 <div class="w-full md:w-2/2 px-3 mb-6 md:mb-0">
-                    <label class="block uppercase tracking-wide text-gray-700 text-xs font-bold mb-2" for="{{ form.first_name.id_for_label }}">
+                    <label class="block uppercase tracking-wide text-gray-700 text-xs font-bold mb-2" for="{{ form.username.id_for_label }}">
                         {{ form.username.label }}
                     </label> {{ form.username }} {% if form.username.errors %} {% for error in form.username.errors %}
                     <p class="text-red-600 text-sm italic pb-2">{{ error }}</p>

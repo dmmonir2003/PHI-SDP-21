@@ -1,15 +1,19 @@
 from typing import Any
+from django.forms.models import BaseModelForm
+from django.http import HttpResponse
 from django.shortcuts import render
 from django.views.generic import CreateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from .models import Transaction
-
+from .constans import DEPOSIT,WITHDRAWAL,LOAN,LOAN_PAID
+from .forms import DepositForm,WithdrawForm,LoanRequestForm
+from django.contrib import messages
 
 
 # Create your views here.
 
 
-class TransectionCreateViewMixin(LoginRequiredMixin,CreateView):
+class TransactionCreateViewMixin(LoginRequiredMixin,CreateView):
     template_name=''
     model =Transaction
     title=''
@@ -30,4 +34,23 @@ class TransectionCreateViewMixin(LoginRequiredMixin,CreateView):
             'title':self.title
         })
         return context
+    
+
+class DepositView(TransactionCreateViewMixin):
+    form_class=DepositForm
+    title='Deposit'
+
+    def get_initial(self):
+        initial={'transaction_type':DEPOSIT}
+        return initial
+    def form_valid(self, form):
+        amount=form.cleaned_data.get('amount')
+        account=self.request.user.account
+        account.balance+=amount
+        account.save(
+            update_fields=['balance']
+        )
+        messages.success(self.request,f'Your amount {amount} add to your account ')
+
+        return super().form_valid(form)
     

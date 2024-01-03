@@ -12,15 +12,16 @@ from django.http import HttpResponse
 from datetime import datetime
 from django.db.models import Sum
 from django.views import View
+from django.urls import reverse_lazy
 
 # Create your views here.
 
 
 class TransactionCreateViewMixin(LoginRequiredMixin,CreateView):
-    template_name=''
+    template_name='transaction/transaction_form.html'
     model =Transaction
     title=''
-    success_url=''
+    success_url=reverse_lazy('transaction_report')
     
 
     def get_form_kwargs(self):
@@ -31,7 +32,7 @@ class TransactionCreateViewMixin(LoginRequiredMixin,CreateView):
         })
         return kwargs
     
-    def get_context_data(self, **kwargs) :
+    def get_context_data(self, **kwargs):
         context= super().get_context_data(**kwargs)
         context.update({
             'title':self.title
@@ -75,7 +76,7 @@ class WithdrawView(TransactionCreateViewMixin):
         return super().form_valid(form)
 class LoanRequestView(TransactionCreateViewMixin):
     form_class=LoanRequestForm
-    title='LoanRequest'
+    title='Loan Request'
 
     def get_initial(self):
         initial={'transaction_type':LOAN}
@@ -93,7 +94,7 @@ class LoanRequestView(TransactionCreateViewMixin):
 
 
 class TransactionReportView(LoginRequiredMixin,ListView):
-       template_name=''
+       template_name='transaction/transaction_report.html'
        model=Transaction
        balance=0
 
@@ -107,16 +108,20 @@ class TransactionReportView(LoginRequiredMixin,ListView):
            end_date_str=self.request.GET.get('end_date')
 
            if start_date_str and end_date_str:
+               
                start_date=datetime.strptime(start_date_str,'%Y-%m-%d').date()
                end_date=datetime.strptime(end_date_str,'%Y-%m-%d').date()
+
+
                queryset=queryset.filter(timestamp__date__gte=start_date,timestamp__date__lte=end_date)
+
                self.balance=Transaction.objects.filter(timestamp__date__gte=start_date,timestamp__date__lte=end_date).aggregate(Sum('amount'))['amount__sum']
 
            else:
                self.balance=self.request.user.account.balance
 
-           return queryset.distinct()
-        def get_context_data(self, **kwargs) :
+           return queryset
+       def get_context_data(self, **kwargs) :
             context= super().get_context_data(**kwargs)
             context.update({
             'account':self.request.user.account
@@ -137,16 +142,16 @@ class PayLoanViev(LoginRequiredMixin,View):
                     user_account.save()
                     loan.transaction_type=LOAN_PAID
                     loan.save()
-                    return redirect()
+                    return redirect('loan_pay')
                 else:
                     messages.error(self.request,'loan amount is grater then your current balance ')
-                    return redirect()
+                    return redirect('loan_pay')
                 
 
 
 class LoanListView(LoginRequiredMixin,ListView):
     model=Transaction
-    template_name=''
+    template_name='transaction/loan_request.html'
     context_object_name='loans'
 
     def get_queryset(self):

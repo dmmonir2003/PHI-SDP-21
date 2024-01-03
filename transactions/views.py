@@ -145,7 +145,7 @@ class PayLoanViev(LoginRequiredMixin,View):
                     return redirect('loan_pay')
                 else:
                     messages.error(self.request,'loan amount is grater then your current balance ')
-                    return redirect('loan_pay')
+            return redirect('loan_pay')
                 
 
 

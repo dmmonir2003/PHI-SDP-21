@@ -1,7 +1,7 @@
-from typing import Any
+
 from django.forms.models import BaseModelForm
 from django.http import HttpResponse
-from django.shortcuts import render
+from django.shortcuts import render,get_object_or_404,redirect
 from django.views.generic import CreateView,ListView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from .models import Transaction
@@ -10,7 +10,8 @@ from .forms import DepositForm,WithdrawForm,LoanRequestForm
 from django.contrib import messages
 from django.http import HttpResponse
 from datetime import datetime
-from django.db import Sum
+from django.db.models import Sum
+from django.views import View
 
 # Create your views here.
 
@@ -35,7 +36,7 @@ class TransactionCreateViewMixin(LoginRequiredMixin,CreateView):
         context.update({
             'title':self.title
         })
-        
+        return context
     
 
 class DepositView(TransactionCreateViewMixin):
@@ -108,8 +109,8 @@ class TransactionReportView(LoginRequiredMixin,ListView):
            if start_date_str and end_date_str:
                start_date=datetime.strptime(start_date_str,'%Y-%m-%d').date()
                end_date=datetime.strptime(end_date_str,'%Y-%m-%d').date()
-               
-               self.balance=Transaction.objects.filter(timestamp_date_gte=start_date,timestamp_date_lte=end_date).aggregate(Sum('amount'))['amount__sum']
+               queryset=queryset.filter(timestamp__date__gte=start_date,timestamp__date__lte=end_date)
+               self.balance=Transaction.objects.filter(timestamp__date__gte=start_date,timestamp__date__lte=end_date).aggregate(Sum('amount'))['amount__sum']
 
            else:
                self.balance=self.request.user.account.balance
@@ -124,7 +125,32 @@ class TransactionReportView(LoginRequiredMixin,ListView):
 
 
             
+class PayLoanViev(LoginRequiredMixin,View):
+        def get(self,request,loan_id):
+            loan=get_object_or_404(Transaction,id=loan_id)
+
+            if loan.loan_approve:
+                user_account=loan.account
+                if loan.amount<user_account.balance:
+                    user_account.balance-=loan.amount
+                    loan.balance_after_transaction=user_account.balance
+                    user_account.save()
+                    loan.transaction_type=LOAN_PAID
+                    loan.save()
+                    return redirect()
+                else:
+                    messages.error(self.request,'loan amount is grater then your current balance ')
+                    return redirect()
+                
 
 
+class LoanListView(LoginRequiredMixin,ListView):
+    model=Transaction
+    template_name=''
+    context_object_name='loans'
 
-       
+    def get_queryset(self):
+        user_account=self.request.user.account
+        queryset=Transaction.objects.filter(account=user_account,transaction_type=LOAN)
+        return queryset
+    

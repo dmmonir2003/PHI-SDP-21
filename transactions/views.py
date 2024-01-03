@@ -2,13 +2,15 @@ from typing import Any
 from django.forms.models import BaseModelForm
 from django.http import HttpResponse
 from django.shortcuts import render
-from django.views.generic import CreateView
+from django.views.generic import CreateView,ListView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from .models import Transaction
 from .constans import DEPOSIT,WITHDRAWAL,LOAN,LOAN_PAID
 from .forms import DepositForm,WithdrawForm,LoanRequestForm
 from django.contrib import messages
 from django.http import HttpResponse
+from datetime import datetime
+from django.db import Sum
 
 # Create your views here.
 
@@ -33,7 +35,7 @@ class TransactionCreateViewMixin(LoginRequiredMixin,CreateView):
         context.update({
             'title':self.title
         })
-        return context
+        
     
 
 class DepositView(TransactionCreateViewMixin):
@@ -87,3 +89,42 @@ class LoanRequestView(TransactionCreateViewMixin):
 
         return super().form_valid(form)
     
+
+
+class TransactionReportView(LoginRequiredMixin,ListView):
+       template_name=''
+       model=Transaction
+       balance=0
+
+
+       def get_queryset(self):
+           queryset= super().get_queryset().filter(
+               account=self.request.user.account
+           )
+
+           start_date_str=self.request.GET.get('start_date')
+           end_date_str=self.request.GET.get('end_date')
+
+           if start_date_str and end_date_str:
+               start_date=datetime.strptime(start_date_str,'%Y-%m-%d').date()
+               end_date=datetime.strptime(end_date_str,'%Y-%m-%d').date()
+               
+               self.balance=Transaction.objects.filter(timestamp_date_gte=start_date,timestamp_date_lte=end_date).aggregate(Sum('amount'))['amount__sum']
+
+           else:
+               self.balance=self.request.user.account.balance
+
+           return queryset.distinct()
+        def get_context_data(self, **kwargs) :
+            context= super().get_context_data(**kwargs)
+            context.update({
+            'account':self.request.user.account
+             })
+            return context
+
+
+            
+
+
+
+       

@@ -13,6 +13,8 @@ from datetime import datetime
 from django.db.models import Sum
 from django.views import View
 from django.urls import reverse_lazy
+from django.template.loader import render_to_string
+from django.core.mail import EmailMessage,EmailMultiAlternatives
 
 # Create your views here.
 
@@ -55,6 +57,18 @@ class DepositView(TransactionCreateViewMixin):
             update_fields=['balance']
         )
         messages.success(self.request,f'Your amount {amount} add to your account ')
+
+        mail_subject='Deposit Message'
+        message=render_to_string('transaction/deposit_email.html',{
+            'user':self.request.user,
+            'amount':amount
+        })
+        
+        to_email=self.request.user.email
+        send_email=EmailMultiAlternatives(mail_subject,'',to=[to_email])
+        send_email.attach_alternative(message,'text/html')
+        send_email.send()
+
 
         return super().form_valid(form)
 class WithdrawView(TransactionCreateViewMixin):

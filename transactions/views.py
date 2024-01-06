@@ -18,6 +18,15 @@ from django.core.mail import EmailMessage,EmailMultiAlternatives
 
 # Create your views here.
 
+def transaction_email_to_user(user,subject,amount,template):
+     
+        message=render_to_string(template,{
+            'user':user,
+            'amount':amount
+        })
+        send_email=EmailMultiAlternatives(subject,'',to=[user.email])
+        send_email.attach_alternative(message,'text/html')
+        send_email.send()
 
 class TransactionCreateViewMixin(LoginRequiredMixin,CreateView):
     template_name='transaction/transaction_form.html'
@@ -56,18 +65,12 @@ class DepositView(TransactionCreateViewMixin):
         account.save(
             update_fields=['balance']
         )
-        messages.success(self.request,f'Your amount {amount} add to your account ')
 
-        mail_subject='Deposit Message'
-        message=render_to_string('transaction/deposit_email.html',{
-            'user':self.request.user,
-            'amount':amount
-        })
-        
-        to_email=self.request.user.email
-        send_email=EmailMultiAlternatives(mail_subject,'',to=[to_email])
-        send_email.attach_alternative(message,'text/html')
-        send_email.send()
+
+        messages.success(self.request,f'Your amount {amount} add to your account ')
+        # email function 
+        transaction_email_to_user(self.request.user,'Deposit message',amount,'transaction/deposit_email.html')
+       
 
 
         return super().form_valid(form)
@@ -86,6 +89,8 @@ class WithdrawView(TransactionCreateViewMixin):
             update_fields=['balance']
         )
         messages.success(self.request,f'Your amount {amount} withdraw to your account ')
+        transaction_email_to_user(self.request.user,'Withdraw message',amount,'transaction/withdraw_email.html')
+        
 
         return super().form_valid(form)
 class LoanRequestView(TransactionCreateViewMixin):
@@ -102,6 +107,7 @@ class LoanRequestView(TransactionCreateViewMixin):
             return HttpResponse('Your loan limits already crossed ')
         
         messages.success(self.request,f'Your amount {amount} Loan request send  to admin successfully  ')
+        transaction_email_to_user(self.request.user,'Loan Request message',amount,'transaction/loan_email.html')
 
         return super().form_valid(form)
     

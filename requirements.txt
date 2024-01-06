@@ -1,5 +1,6 @@
 asgiref
 crispy-bootstrap5
+dj-database-url
 distlib
 Django
 django-crispy-forms

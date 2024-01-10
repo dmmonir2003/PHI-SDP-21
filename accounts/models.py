@@ -11,6 +11,7 @@ class UserBankAccount(models.Model):
     gender=models.CharField(max_length=100,choices=GENDER)
     initail_deposit_date=models.DateField(auto_now_add=True)
     balance = models.DecimalField(default=0, max_digits=12, decimal_places=2)
+    account_desabol=models.BooleanField(default=False,null=True,blank=True)
     def __str__(self):
         return str(self.account_no)
     
@@ -27,3 +28,4 @@ class UserAddress(models.Model):
 
     def __str__(self):
         return self.user.email
+    

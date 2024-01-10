@@ -5,8 +5,8 @@ from django.shortcuts import render,get_object_or_404,redirect
 from django.views.generic import CreateView,ListView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from .models import Transaction
-from .constans import DEPOSIT,WITHDRAWAL,LOAN,LOAN_PAID
-from .forms import DepositForm,WithdrawForm,LoanRequestForm
+from .constans import DEPOSIT,WITHDRAWAL,LOAN,LOAN_PAID,MONEY_RECEIVE,MONEY_TRANSFER
+from .forms import DepositForm,WithdrawForm,LoanRequestForm,MoneyTransferForm
 from django.contrib import messages
 from django.http import HttpResponse
 from datetime import datetime
@@ -15,6 +15,7 @@ from django.views import View
 from django.urls import reverse_lazy
 from django.template.loader import render_to_string
 from django.core.mail import EmailMessage,EmailMultiAlternatives
+from accounts.models import UserBankAccount
 
 # Create your views here.
 
@@ -84,14 +85,16 @@ class WithdrawView(TransactionCreateViewMixin):
     def form_valid(self, form):
         amount=form.cleaned_data.get('amount')
         account=self.request.user.account
-        account.balance-=amount
-        account.save(
-            update_fields=['balance']
-        )
-        messages.success(self.request,f'Your amount {amount} withdraw to your account ')
-        transaction_email_to_user(self.request.user,'Withdraw message',amount,'transaction/withdraw_email.html')
-        
-
+        if not account.account_desabol:
+            account.balance-=amount
+            account.save(
+                update_fields=['balance']
+            )
+            messages.success(self.request,f'Your amount {amount} withdraw to your account ')
+            transaction_email_to_user(self.request.user,'Withdraw message',amount,'transaction/withdraw_email.html')
+            
+        else:
+            messages.success(self.request,'The bank is bankrupt.')
         return super().form_valid(form)
 class LoanRequestView(TransactionCreateViewMixin):
     form_class=LoanRequestForm
@@ -179,3 +182,49 @@ class LoanListView(LoginRequiredMixin,ListView):
         queryset=Transaction.objects.filter(account=user_account,transaction_type=LOAN)
         return queryset
     
+
+
+class MoneyTransferView(LoginRequiredMixin, View):
+    template_name = 'transaction/transfer_money.html'
+
+    def get(self, request):
+        form = MoneyTransferForm()
+        return render(request, self.template_name, {'form': form, 'title': 'Money Transfer'})
+
+    def post(self, request):
+        form = MoneyTransferForm(request.POST)
+        if form.is_valid():
+            amount = form.cleaned_data['amount']
+            user_id = form.cleaned_data['user_account']
+
+            try:
+                to_account = UserBankAccount.objects.get( account_no=user_id)
+                current_account = self.request.user.account 
+
+                current_account.balance -= amount
+                current_account.save()
+
+                to_account.balance += amount
+                to_account.save()
+
+                Transaction.objects.create(
+                    account=current_account,
+                    balance_after_transaction=current_account.balance,
+                    amount=amount,
+                    transaction_type=MONEY_TRANSFER
+                )
+
+                Transaction.objects.create(
+                    account=to_account,
+                    balance_after_transaction=to_account.balance,
+                    amount=amount,
+                    transaction_type=MONEY_RECEIVE
+                )
+                messages.success(request, 'Money transfer successful !!')
+                transaction_email_to_user(self.request.user,'Money Transfer message',amount,'transaction/money_trans_email.html')
+
+                transaction_email_to_user(to_account.user,'Money Receive message',amount,'transaction/money_receive.html')
+            except UserBankAccount.DoesNotExist:
+                messages.error(request, 'Account does not exist !!')
+
+        return render(request, self.template_name, {'form': form})

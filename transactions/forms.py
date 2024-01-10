@@ -59,3 +59,8 @@ class LoanRequestForm(TransactionForm):
           amount=self.cleaned_data.get('amount')
 
           return amount
+
+
+class MoneyTransferForm(forms.Form):
+     amount=forms.DecimalField()
+     user_account=forms.IntegerField()

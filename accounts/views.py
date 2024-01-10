@@ -1,11 +1,29 @@
-from django.shortcuts import render,redirect
+from django.template.loader import render_to_string
 from django.views.generic import FormView,UpdateView
 # from django.views.generic.edit import UpdateView
-
+from django.contrib.auth.views import PasswordChangeView
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.forms import PasswordChangeForm
 from .forms import UserForm,UserUpdateForm
 from django.contrib.auth import login,logout
 from django.contrib.auth.views import LoginView,LogoutView
 from django.urls import reverse_lazy
+from django.core.mail import EmailMultiAlternatives
+
+from django.contrib import messages
+
+# Create your views here.
+
+def transaction_email_to_user(user,subject,template):
+     
+        message=render_to_string(template,{
+            'user':user,
+            
+        })
+        send_email=EmailMultiAlternatives(subject,'',to=[user.email])
+        send_email.attach_alternative(message,'text/html')
+        send_email.send()
+
 # Create your views here.
 
 class UserRegistrationView(FormView):
@@ -42,7 +60,27 @@ class UserProfileUpdate(UpdateView):
     def get_object(self, queryset=None):
         return self.request.user
     
-# class UserProfileUpdate(View):
+
+
+class ChangepassView(LoginRequiredMixin, PasswordChangeView):
+    template_name = 'accounts/pass_change.html'
+    form_class = PasswordChangeForm
+    success_url = reverse_lazy('profile')
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        
+        subject = 'Password Change'
+        template = 'accounts/email_change_pass.html'
+        message = render_to_string(template, {'user': self.request.user})
+        
+        send_email = EmailMultiAlternatives(subject, '', to=[self.request.user.email])
+        send_email.attach_alternative(message, 'text/html')
+        send_email.send()
+        messages.success(self.request,'Password change Successfully')
+        return response
+
+    
+#  class UserProfileUpdate(View):
 #     template_name='accounts/profile.html'
     
 
